@@ -80,29 +80,39 @@ def annotate_clinvar_variant(low_coverage_candidate, annotate_file, REF_VCF=REF_
 
     return ClinVar_map #count_ClinVar(ClinVar_map)
 
-def count_ClinVar(ClinVar_map):
+def count_ClinVar(annotate_file):
+    with open(f'{annotate_file}.pickle', 'rb') as rh:
+        ClinVar_map = pickle.load(rh)
     single_nucleotide_variant = []
     deletion = []
     others = []
-    for k,vs in ClinVar_map.items():
-        for v in vs:       
-            if 'Deletion' in vs:
-                deletion.append(val)
-            elif 'single_nucleotide_variant' in vs:
-                single_nucleotide_variant.append(vs)
-            else:
-                others.append(vs)
 
-    return len(set(single_nucleotide_variant)), len(set(deletion)), len(set(others))
+    for k,vs in ClinVar_map.items():
+        for val in vs:       
+            if 'Deletion' in val:
+                deletion.append(val)
+            elif 'single_nucleotide_variant' in val:
+                single_nucleotide_variant.append(val)
+            else:
+                others.append(val)
+    snv_num = len(set(single_nucleotide_variant))
+    deletion_num = len(set(deletion))
+    others_num = len(set(others))
+
+    print(snv_num, deletion_num, others_num)
+
+    return snv_num, deletion_num, others_num
 
 def annotate_exon(low_coverage_candidate, annotate_file, REF_VCF=REF_gff):
     cmd = f'python3 lib/check_exon_v2.py {low_coverage_candidate} {annotate_file}.region > {annotate_file}'
     _ = call_cmd(cmd)
 
 def low_coverage_report(low_coverage_candidate, clinvar_annotate_file, exon_annotate_file, low_coverage_file):
+    # Load ClinVar low coverage region
     with open(f'{clinvar_annotate_file}.pickle', 'rb') as handle:
         ClinVar_map = pickle.load(handle) 
 
+    # Load Exon low coverage region
     exon_map = {}
     with open(exon_annotate_file, 'r') as fh:
         for line in fh:
@@ -131,25 +141,29 @@ def low_coverage_report(low_coverage_candidate, clinvar_annotate_file, exon_anno
                 else:
                     to_report[key] += [exon_map[key]]
 
-    for k,v in to_report.items():
+    for v in to_report.values():
         wh.write('\t'.join(v)+'\n')
     wh.close()
     return
 
-def drop_del(out_dir, sample_id):
+def drop_del(out_dir, sample_id, vcf_del=None):
     '''
     remove 1. exact match rows of candidate low coverage and sample vcf deletion
     remove 2. likely deletion
     remove 3. male chrX with no clinvar snp inside
     '''
-    # remove 1: exact match vcf deletion region
-    del_file = f"/home/missmi/Missmi_Intelligence/Results/{sample_id}/analyze_low_coverage/vcf_scan/report_vcf_del.txt"
+    
+    if vcf_del is None:
+        del_file = f"/home/dna/webb/low_coverage_test/low_coverage_out/{sample_id}/vcf_scan/report_vcf_del.txt"
+    else:
+        del_file = vcf_del
     del_file2 = f"{out_dir}/{sample_id}_likely_deletion.txt"
     del_file3 = f"{out_dir}/{sample_id}_chrX_snp.txt"
 
     candidate_file = f"{out_dir}/{sample_id}_coverage_check.txt"
     out_file = f"{out_dir}/{sample_id}_coverage_check_filter.txt"
 
+    # remove 1: exact match vcf deletion region
     with open(candidate_file, 'r') as fh:
         candidate_list = fh.readlines()
 
@@ -216,6 +230,19 @@ def drop_del(out_dir, sample_id):
     with open(out_file, 'w') as fh:
         fh.writelines(candidate_list)
 
+    # update clinvar file
+    annotate_file = f"{out_dir}/{sample_id}_clinvar"
+    with open(f'{annotate_file}.pickle', 'rb') as rh:
+        ClinVar_map = pickle.load(rh)
+
+    to_rm_keys = [item.split('\t')[0] for item in del_k_list]
+    for item in to_rm_keys:
+        ClinVar_map.pop(item, None)
+
+    with open(f'{annotate_file}.pickle', 'wb') as handle:
+        pickle.dump(ClinVar_map, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    
 def find_deletion(line):
     '''
     return the input line if len(ref) < len(alt)

@@ -16,15 +16,21 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--id',help='input subject id', required=True)
 parser.add_argument('--out', help='output directory', required=True)
 parser.add_argument('--sex', help='M of F', required=True)
+parser.add_argument('--vd', help='vcf deletion')
 
 args = parser.parse_args()
 subject_id = args.id
 out_dir = args.out
 sex = args.sex
+if args.vd:
+    vcf_del = args.vd
 
 # input file
-bam_dir = '/home/missmi/Missmi_Intelligence/Results/'
-bam_file = f'{bam_dir}/{subject_id}/variant_call/{subject_id}.recaled.bam' # realigned
+# bam_dir = '/home/missmi/Missmi_Intelligence/Results/'
+# bam_file = f'{bam_dir}/{subject_id}/variant_call/{subject_id}.recaled.bam' # realigned
+bam_dir = '/home/dna/webb/low_coverage_test/open_bam'
+bam_file = f'{bam_dir}/{subject_id}.realigned.bam'
+
 # output files
 acmg_bam_file = f'{out_dir}/{subject_id}_acmg.bam'
 low_coverage_candidate = f'{out_dir}/{subject_id}.low_coverage_candidate.txt'
@@ -43,7 +49,7 @@ def extract_acmg():
 
 # Get low-coverage region
 def get_low_coverage():
-    res = low_coverage_check(acmg_bam_file) #bam?
+    res = low_coverage_check(acmg_bam_file)
     with open(low_coverage_candidate, 'w') as wh:
         for line in res:
             start, end = line.split(':')[1].split('-')
@@ -53,25 +59,31 @@ def get_low_coverage():
     print(f'Generate {low_coverage_candidate} done!')
 
 def annotate_region():
-    #print('Start annotating ClinVar variants')   
-    #_ = annotate_clinvar_variant(low_coverage_candidate, annotate_clinvar_file)
+    print('Start annotating ClinVar variants')   
+    _ = annotate_clinvar_variant(low_coverage_candidate, annotate_clinvar_file)
     print('Start annotating exon region') 
     _ = annotate_exon(low_coverage_candidate, annotate_exon_file)
 
-def report():
+def report(filt=True):
     low_coverage_report(low_coverage_candidate, annotate_clinvar_file, annotate_exon_file, low_coverage_file)
+    if filt:
+        filter()
+    return count_ClinVar(annotate_clinvar_file)
 
 def filter():
     likely_deletion_check(acmg_bam_file, out_dir, subject_id)
     chrX_check(sex, acmg_bam_file, out_dir, subject_id)
-    drop_del(out_dir, subject_id)
+    if args.vd:
+        drop_del(out_dir, subject_id, vcf_del)
+    else:
+        drop_del(out_dir, subject_id)
+     
 
 def main():
     # extract_acmg()
     # get_low_coverage()
-    annotate_region()
-    report()
-    filter()
+    # annotate_region()
+    report()  
 
 if __name__ == "__main__":
     main()
