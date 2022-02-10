@@ -4,7 +4,7 @@ from lib.utils import *
 # call_cmd, low_coverage_check, annotate_clinvar_variant, count_ClinVar, annotate_exon, low_coverage_report
 '''
 args: bam_dir, subject_id, out_dir
-example: python3 low_coverage_analysis.py --id GB0001 --out GB0001
+example: python3 low_coverage_analysis.py --id GB0001 --out out/GB0001
 
 Date:20220127 to do
 1. Add ClinVar ID after 'P/LP'
@@ -59,8 +59,8 @@ def get_low_coverage():
     print(f'Generate {low_coverage_candidate} done!')
 
 def annotate_region():
-    print('Start annotating ClinVar variants')   
-    _ = annotate_clinvar_variant(low_coverage_candidate, annotate_clinvar_file)
+    #print('Start annotating ClinVar variants')   
+    #_ = annotate_clinvar_variant(low_coverage_candidate, annotate_clinvar_file)
     print('Start annotating exon region') 
     _ = annotate_exon(low_coverage_candidate, annotate_exon_file)
 
@@ -80,9 +80,9 @@ def filter():
      
 
 def main():
-    # extract_acmg()
-    # get_low_coverage()
-    # annotate_region()
+    extract_acmg()
+    get_low_coverage()
+    annotate_region()
     report()  
 
 if __name__ == "__main__":

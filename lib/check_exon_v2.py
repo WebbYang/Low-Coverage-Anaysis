@@ -17,7 +17,8 @@ for i in ncbi_chr.keys():
 flanking=50
 
 #get exon region
-with open("/home/dna/webb/low_coverage_test/samtools_sol/interim_GRCh37.p13_top_level_2017-01-13.gff3",'r') as r:
+gff = sys.argv[3] #"/home/dna/webb/low_coverage_test/samtools_sol/interim_GRCh37.p13_top_level_2017-01-13.gff3"
+with open(gff,'r') as r:
     line=r.readline()
     while line:
         if(line.startswith("#")):

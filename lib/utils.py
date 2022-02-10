@@ -1,10 +1,11 @@
 import subprocess
 import re
 import pickle
+import re
 
 
 REF_ClinVar = '/home/dna/webb/low_coverage_test/samtools_sol/test_vcf/clinvar_20200316.vcf.gz'
-REF_gff = ''
+REF_gff = '/home/dna/webb/low_coverage_test/samtools_sol/interim_GRCh37.p13_top_level_2017-01-13.gff3'
 
 def call_cmd(cmd):
     '''
@@ -103,8 +104,8 @@ def count_ClinVar(annotate_file):
 
     return snv_num, deletion_num, others_num
 
-def annotate_exon(low_coverage_candidate, annotate_file, REF_VCF=REF_gff):
-    cmd = f'python3 lib/check_exon_v2.py {low_coverage_candidate} {annotate_file}.region > {annotate_file}'
+def annotate_exon(low_coverage_candidate, annotate_file, REF_GFF=REF_gff):
+    cmd = f'python3 lib/check_exon_v2.py {low_coverage_candidate} {annotate_file}.region {REF_GFF} > {annotate_file}'
     _ = call_cmd(cmd)
 
 def low_coverage_report(low_coverage_candidate, clinvar_annotate_file, exon_annotate_file, low_coverage_file):
@@ -363,3 +364,17 @@ def chrX_check(sex, bam_dir, out_dir, sample_id):
     with open(f'{out_dir}/{sample_id}_chrX_snp.txt', 'w') as h:
         for k,v in clinvar_snp_in.items():
             h.write(k+'\t'+str(v)+'\n')
+
+def bed_length(bed_file):
+    total_low_length = 0
+    with open(bed_file, 'r') as rh:
+        lines = rh.readlines()
+    if lines[0].startswith('track name'):
+        lines = lines[1:]
+    if ':' in lines[0]:
+        lines = [re.sub(r':|-','\t',line) for line in lines]
+    for line in lines:
+        info = line.split('\t')
+        start, end = int(info[1]), int(info[2].rstrip())
+        total_low_length += (end-start)
+    return total_low_length
